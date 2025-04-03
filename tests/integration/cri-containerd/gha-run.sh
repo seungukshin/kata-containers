@@ -16,6 +16,9 @@ source "${cri_containerd_dir}/../../common.bash"
 function install_dependencies() {
 	info "Installing the dependencies needed for running the cri-containerd tests"
 
+	echo "before removing containerd"
+	check_containerd_service
+
 	# Remove go if it's installed as it conflicts with another version of go
 	sudo apt-get remove -y golang-* || true
 	sudo rm -rf /usr/local/go
@@ -26,6 +29,9 @@ function install_dependencies() {
 	# Remove containerd if it's installed as it conflicts with another version of containerd
 	sudo apt-get remove -y containerd containerd.io || true
 	sudo rm -rf /etc/systemd/system/containerd.service
+
+	echo "after removing containerd"
+	check_containerd_service
 
 	# Dependency list of projects that we can rely on the system packages
 	# - build-essential
@@ -64,9 +70,15 @@ function install_dependencies() {
 		"install_${dep[0]}" "${dep[1]}"
 	done
 
+	echo "after installing dependencies"
+	check_containerd_service
+
 	# Clone containerd as we'll need to build it in order to run the tests
 	# base_version: The version to be intalled in the ${major}.${minor} format
 	clone_cri_containerd $(get_from_kata_deps ".externals.containerd.${CONTAINERD_VERSION}")
+
+	echo "after cloning containerd"
+	check_containerd_service
 }
 
 function run() {

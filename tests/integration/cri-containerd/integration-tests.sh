@@ -10,6 +10,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 set -o errtrace
+set -x
 
 SCRIPT_PATH=$(dirname "$(readlink -f "$0")")
 source "${SCRIPT_PATH}/../../common.bash"
@@ -142,6 +143,8 @@ function cleanup() {
 trap cleanup EXIT
 
 function err_report() {
+	check_containerd_service
+
 	local log_file="${REPORT_DIR}/containerd.log"
 	if [ -f "$log_file" ]; then
 		echo "::group::ERROR: containerd log :"

@@ -7,6 +7,8 @@
 # This file contains common functions that
 # are being used by our metrics and integration tests
 
+set -x
+
 this_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export repo_root_dir="$(cd "${this_script_dir}/../" && pwd)"
 
@@ -358,7 +360,21 @@ function restart_containerd_service() {
 	[ "$counter" -ge "$retries" ] && { warn "Can't connect to containerd socket"; return 1; }
 
 	clean_env_ctr
+
+	check_containerd_service
+
 	return 0
+}
+
+function check_containerd_service() {
+	echo "is containerd installed?"
+	sudo apt search "^containerd" || true
+	echo "where is containerd?"
+	which containerd || true
+	echo "is containerd running?"
+	ps -ef | grep containerd || true
+	echo "what is containerd service status"
+	sudo systemctl status containerd || true
 }
 
 function restart_crio_service() {
@@ -451,7 +467,13 @@ function install_kata() {
 	declare -r katadir="/opt/kata"
 	declare -r local_bin_dir="/usr/local/bin/"
 
+	echo "before installing kata"
+	check_containerd_service
+
 	install_kata_core "${katadir}"
+
+	echo "after installing kata"
+	check_containerd_service
 
 	# create symbolic links to kata components
 	for b in "${katadir}"/bin/* ; do
