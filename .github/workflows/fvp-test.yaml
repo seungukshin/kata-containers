@@ -1,0 +1,166 @@
+name: FVP Test
+on:
+  workflow_dispatch:
+    inputs:
+      fvp-build:
+        type: boolean
+        default: true
+      fvp-test:
+        type: boolean
+        default: true
+
+jobs:
+  fvp-build-packages:
+    name: Build FVP packages
+    runs-on: ubuntu-22.04
+    if: ${{ inputs.fvp-build }}
+    defaults:
+      run:
+        working-directory: /mnt
+    steps:
+      - name: Set permission for /mnt
+        run: sudo chmod 777 /mnt
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.0.0
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: bash ${GITHUB_WORKSPACE}/tests/integration/fvp/gha-run.sh install-dependencies
+
+      - name: Build FVP packages
+        run: bash ${GITHUB_WORKSPACE}/tests/integration/fvp/gha-run.sh build-packages
+
+      - name: Push to ghcr.io
+        run: |
+          tar Jcvf fvp-packages.tar.xz package
+          oras push ghcr.io/${GITHUB_REPOSITORY_OWNER}/fvp-packages:latest fvp-packages.tar.xz
+
+  fvp-build-rootfs:
+    name: Build FVP rootfs
+    runs-on: ubuntu-22.04
+    if: ${{ inputs.fvp-build }}
+    defaults:
+      run:
+        working-directory: /mnt
+    steps:
+      - name: Set permission for /mnt
+        run: sudo chmod 777 /mnt
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.0.0
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: bash ${GITHUB_WORKSPACE}/tests/integration/fvp/gha-run.sh install-dependencies
+
+      - name: Build FVP packages
+        run: bash ${GITHUB_WORKSPACE}/tests/integration/fvp/gha-run.sh build-rootfs
+
+      - name: Push to ghcr.io
+        run: |
+          tar Jcvf fvp-rootfs.tar.xz package
+          oras push ghcr.io/${GITHUB_REPOSITORY_OWNER}/fvp-rootfs:latest fvp-rootfs.tar.xz
+
+  fvp-test:
+    name: Simple test on FVP
+    runs-on: ubuntu-22.04
+    needs: [ fvp-build-packages, fvp-build-rootfs ]
+    # allow skipping fvp-build-packages and fvp-build-rootfs
+    if: ${{ inputs.fvp-test }} && ${{ !failure() && !cancelled() }}
+    defaults:
+      run:
+        working-directory: /mnt
+    steps:
+      - name: Set permission for /mnt
+        run: sudo chmod 777 /mnt
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@v1
+        with:
+          version: 1.0.0
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull from ghcr.io
+        run: |
+          oras pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/fvp-packages:latest
+          tar Jxvf fvp-packages.tar.xz
+          rm -rf fvp-packages.tar.xz
+          oras pull ghcr.io/${GITHUB_REPOSITORY_OWNER}/fvp-rootfs:latest
+          tar Jxvf fvp-rootfs.tar.xz
+          rm -rf fvp-rootfs.tar.xz
+
+      - name: Install dependencies
+        run: bash ${GITHUB_WORKSPACE}/tests/integration/fvp/gha-run.sh install-dependencies
+
+      - name: Download kata-containers
+        run: |
+          GH_ARTIFACTS_URL=${GITHUB_API_URL}/repos/kata-containers/kata-containers/actions/artifacts
+          i=0
+          while true; do
+            c=$(curl -sL \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              ${GH_ARTIFACTS_URL}?page=$i | jq '[.artifacts[] | select(.name=="kata-static-tarball-arm64" and .workflow_run.head_branch=="main")] | length')
+            if [[ $c > 0 ]]; then
+              l=$(curl -sL \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                ${GH_ARTIFACTS_URL}?page=$i | jq -r '[.artifacts[] | select(.name=="kata-static-tarball-arm64" and .workflow_run.head_branch=="main")][0].archive_download_url')
+              curl -L \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                -o kata-static.zip $l
+              break
+            fi
+            i=$(($i+1))
+            sleep 1
+          done
+          unzip kata-static.zip
+          rm -rf kata-static.zip
+
+      - name: Prepare rootfs
+        run: bash ${GITHUB_WORKSPACE}/tests/integration/fvp/gha-run.sh prepare-rootfs
+
+      - name: Run simple test
+        run: bash ${GITHUB_WORKSPACE}/tests/integration/fvp/gha-run.sh run

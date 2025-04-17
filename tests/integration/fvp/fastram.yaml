@@ -1,0 +1,8 @@
+run:
+  params:
+    --fast-ram: ${rtvar:FASTRAM_CONFIG}
+
+  rtvars:
+    FASTRAM_CONFIG:
+      type: path
+      value: ''
