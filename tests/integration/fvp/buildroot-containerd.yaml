@@ -1,0 +1,18 @@
+build:
+  buildroot:
+    repo:
+      remote: https://github.com/buildroot/buildroot.git
+      revision: 2024.05.2
+
+    toolchain: aarch64-linux-gnu-
+
+    stderrfilt: true
+
+    prebuild:
+      - make BR2_JLEVEL=${param:jobs} O=${param:builddir} BR2_DEFCONFIG=${btvar:BUILDROOT_CONFIG} defconfig
+
+buildex:
+  btvars:
+    BUILDROOT_CONFIG:
+      type: path
+      value: ''

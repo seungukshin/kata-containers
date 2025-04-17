@@ -1,0 +1,22 @@
+build:
+  linux:
+    repo:
+      remote: https://git.gitlab.arm.com/linux-arm/linux-cca.git
+      revision: cca-full/v5+v7
+
+    toolchain: aarch64-linux-gnu-
+
+    prebuild:
+      - export BUILD_KMODULES=true
+      - export BUILD_KSELFTESTS=false
+      - export KBUILD_BUILD_HOST="ceoss"
+      - export ARCH=arm64
+
+      - git clone --depth 1 https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble
+      - cd noble
+      - ./debian/scripts/misc/annotations --arch arm64 --flavour generic --export > ${param:builddir}/.config
+      - cd ..
+      - rm -rf noble
+      - ./scripts/config --file ${param:builddir}/.config --set-val CONFIG_SYSTEM_TRUSTED_KEYS ""
+      - ./scripts/config --file ${param:builddir}/.config --disable CONFIG_SYSTEM_BLACKLIST_KEYRING
+      - ./scripts/config --file ${param:builddir}/.config --set-val CONFIG_CMDLINE "cpuidle.off=1 root=/dev/vda rootflags=rw,data=ordered console=ttyAMA0"
