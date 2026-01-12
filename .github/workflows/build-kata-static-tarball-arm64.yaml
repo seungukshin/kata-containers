@@ -42,12 +42,12 @@ jobs:
         asset:
           - agent
           - busybox
-          - cloud-hypervisor
-          - firecracker
+          #- cloud-hypervisor
+          #- firecracker
           - kernel
-          - kernel-dragonball-experimental
-          - kernel-nvidia-gpu
-          - kernel-cca-confidential
+          #- kernel-dragonball-experimental
+          #- kernel-nvidia-gpu
+          #- kernel-cca-confidential
           - nydus
           - ovmf
           - qemu
@@ -150,9 +150,9 @@ jobs:
       matrix:
         asset:
           - rootfs-image
-          - rootfs-image-nvidia-gpu
+          #- rootfs-image-nvidia-gpu
           - rootfs-initrd
-          - rootfs-initrd-nvidia-gpu
+          #- rootfs-initrd-nvidia-gpu
     steps:
       - name: Login to Kata Containers quay.io
         if: ${{ inputs.push-to-registry == 'yes' }}

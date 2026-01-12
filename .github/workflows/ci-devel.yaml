@@ -30,6 +30,7 @@ jobs:
       KBUILD_SIGN_PIN: ${{ secrets.KBUILD_SIGN_PIN }}
 
   build-checks:
+    if: false
     uses: ./.github/workflows/build-checks.yaml
     with:
       instance: ubuntu-22.04

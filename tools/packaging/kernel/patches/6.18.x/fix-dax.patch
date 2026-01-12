@@ -1,0 +1,28 @@
+diff --git a/fs/dax.c b/fs/dax.c
+index 516f995a988c..4a0d267bf176 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -468,21 +468,19 @@ static void dax_associate_entry(void *entry, struct address_space *mapping,
+ static void dax_disassociate_entry(void *entry, struct address_space *mapping,
+ 				bool trunc)
+ {
+-	struct folio *folio = dax_to_folio(entry);
+-
+ 	if (dax_is_zero_entry(entry) || dax_is_empty_entry(entry))
+ 		return;
+ 
++	struct folio *folio = dax_to_folio(entry);
+ 	dax_folio_put(folio);
+ }
+ 
+ static struct page *dax_busy_page(void *entry)
+ {
+-	struct folio *folio = dax_to_folio(entry);
+-
+ 	if (dax_is_zero_entry(entry) || dax_is_empty_entry(entry))
+ 		return NULL;
+ 
++	struct folio *folio = dax_to_folio(entry);
+ 	if (folio_ref_count(folio) - folio_mapcount(folio))
+ 		return &folio->page;
+ 	else
